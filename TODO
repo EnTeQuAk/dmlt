@@ -1,0 +1,6 @@
+My personal TODO list
+=====================
+
+ - check and implement buffering for the TokenStream
+ - write unittests for every component (still in progress)
+ - update the examples
