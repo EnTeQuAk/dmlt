@@ -89,7 +89,7 @@ This example's just adding some cool advanced text.
 
 It is a mix out of MoinMoin, Inyoka-Markup and RestructedText (rest).
 As you know is markup parsing a extremly hard thingy to implement. But as we
-use DMLT – ''Desctructive Markup Toolkit'' – it's rather easy since it really
+use DMLT – ''Descriptive Markup Language Toolkit'' – it's rather easy since it really
 helps to outsource the parser implementation and just add the processing
 methods as well as the regular-expressions to get DMLT some informations
 on how to parse the raw text.
