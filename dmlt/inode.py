@@ -28,6 +28,10 @@ class BaseNode(object):
     #: True if this is a text node
     is_text_node = False
 
+    #: This node is some kind of line breaking node
+    #: as \n or \r\n are some.
+    is_linebreak_node = False
+
     #: True if this node is a raw one.
     #: Raw nodes are never processed by node-filters.
     #: Use this only if the node-content matters e.g.

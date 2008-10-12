@@ -50,7 +50,7 @@ def to_unicode(string, charset=None):
                 return string.decode('iso-8859-15', 'replace')
 
 
-def encode_to(string, charset='utf-8'):
+def encode(string, charset='utf-8'):
     """Encode ``string`` to ``charset``"""
     return to_unicode(string).encode(charset)
 
@@ -173,16 +173,33 @@ def parse_child_nodes(stream, node, until):
     `until`-type one so that you can `stream.expect` this token type.
     """
     children = []
-    while stream.current.type != until:
+    while 1:
+        if isinstance(until, (list, tuple)):
+            if stream.current.type in until: break
+        else:
+            if stream.current.type == until: break
         children.append(node.machine.dispatch_node(stream))
     return children
 
 
-def filter_stream(stream, until):
-    """Get some child-values from `stream` until `until` is reached"""
+def filter_stream(stream, until, pop_none=True):
+    """
+    Get some child-values from `stream` until `until` is reached
+
+    The `stream` is stripped by all passed tokens except the `until`-type
+    one so that you can `stream.expect` this token type.
+    """
     buffer = []
-    while stream.current.type != until:
-        if stream.current.directive is not None and stream.current.value:
+    while 1:
+        if isinstance(until, (list, tuple)):
+            if stream.current.type in until: break
+        else:
+            if stream.current.type == until: break
+
+        if pop_none and stream.current.directive is None:
+            stream.next()
+            continue
+        if stream.current.value:
             buffer.append(stream.current.value)
         stream.next()
     return buffer

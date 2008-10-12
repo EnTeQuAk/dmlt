@@ -2,12 +2,14 @@
 import re
 from dmlt.machine import MarkupMachine, Directive, RawDirective, \
                          rule, bygroups
-from dmlt.utils import parse_child_nodes
+from dmlt.utils import parse_child_nodes, filter_stream
 import nodes
 
 
 _number_re = re.compile(r'\d+(?:\.\d*)?')
-
+_bb_start = r'\[%s\s*%s\]'
+_bb_end = r'\[\/%s\]'
+_bb_option_parts = r'(?:\=\s*(.*?)\s*)?'
 _css_color_names = [
     'aqua', 'black', 'blue', 'fuchsia', 'gray', 'green', 'lime', 'yellow'
     'maroon', 'navy', 'olive', 'purple', 'red', 'silver', 'teal', 'white'
@@ -74,11 +76,25 @@ def parse_options(string):
     return items or string
 
 
-def make_bbcode_tag(name, options=False):
-    option_parts = r'\=\s*(.*?)\s*'
-    expression = r'\[%s\s*%s\]|\[\/%s\]' % (name,
-        options and option_parts or '', name)
-    print expression
+def make_bbcode_end(name, join=False):
+    """Just return some [/`name`] expression"""
+    return (join and r'|' or r'') + _bb_end % name
+
+
+def make_bbcode_tag(name, options=False, end=True):
+    """
+    :Parameters:
+        `name`
+            The name of the tag. E.g, if it's "b"
+            the tag will be indentified as [b] and [/b]
+        `options`
+            Append a regular expression to identify options::
+                [tag=option1, option2][/tag]
+        `end'
+            If `True` append the end-tag ([/tag]).
+    """
+    _start = _bb_start % (name, options and _bb_option_parts or '')
+    expression = r'%s%s' % (_start, end and make_bbcode_end(name, True) or r'')
     return expression
 
 
@@ -87,6 +103,14 @@ class TextDirective(RawDirective):
 
     def parse(self, stream):
         return nodes.Text(stream.expect('text').value)
+
+
+class NewlineDirective(Directive):
+    rule = rule(r'\n', enter='nl', one=True)
+
+    def parse(self, stream):
+        stream.expect('nl')
+        return nodes.Newline()
 
 
 class SimpleBBCodeDirective(Directive):
@@ -117,22 +141,79 @@ class UnderlineDirective(SimpleBBCodeDirective):
 
 
 class ColorDirective(Directive):
-    rule = rule(make_bbcode_tag('color', True), bygroups('color'),
-                enter='color')
+    rules = [
+        rule(make_bbcode_tag('color', True, False), bygroups('color'),
+             enter='color_begin', one=True),
+        rule(r'\[\/color\]', enter='color_end', one=True)
+    ]
 
     def parse(self, stream):
         stream.expect('color_begin')
         color = stream.expect('color').value
         children = parse_child_nodes(stream, self, 'color_end')
         stream.expect('color_end')
-        #XXX: I have no idea how to invalidate the next `color` token...
-        stream.next()
         return nodes.Color(color, children)
 
 
+class ListDirective(Directive):
+    rules = [
+        rule(make_bbcode_tag('list', True, False), bygroups('list_type'),
+             enter='list_begin', one=True),
+        rule(r'\[\*\]\s*(.*)(?m)', bygroups('value'), enter='list_item', one=True),
+        rule(make_bbcode_end('list', False), enter='list_end', one=True)
+    ]
+
+    def parse(self, stream):
+        if stream.test('list_item'):
+            stream.next()
+            val = stream.expect('value').value
+            return nodes.ListItem([nodes.Text(val)])
+
+        def finish():
+            return nodes.List(list_type, children)
+
+        def is_empty_node(node):
+            return node.is_linebreak_node or \
+                    (node.is_text_node and not node.text.strip())
+
+        def finish_if_list_end():
+            if stream.test('list_end'):
+                stream.next()
+                return finish()
+
+        stream.expect('list_begin')
+        t = stream.expect('list_type')
+        if not t.value:
+            list_type = 'unordered'
+        else:
+            list_type = {
+                '1':    'arabic',
+                'a':    'alphalower',
+                'A':    'alphalower',
+                '*':    'unordered'
+            }.get(t.value, None)
+
+        if list_type is None:
+            ret = u'[list]' + (u''.join(filter_stream(
+                               stream, ('list_end', 'eof'), False)))
+            ret += stream.expect('list_end').value
+            return nodes.Text(ret)
+
+        children = filter(lambda n: not is_empty_node(n),
+                          parse_child_nodes(stream, self, ('list_end', 'eof')))
+
+        # broken markup, no end tags...
+        if stream.eof:
+            return finish()
+
+        finish_if_list_end()
+
+        return finish()
+
+
 class BBCodeMarkupMachine(MarkupMachine):
-    directives = [StrongDirective, EmphasizedDirective, UnderlineDirective,
-                  ColorDirective]
+    directives = [NewlineDirective, StrongDirective, EmphasizedDirective,
+                  UnderlineDirective, ColorDirective, ListDirective]
 
     special_directives = [TextDirective]
 
@@ -143,11 +224,14 @@ bold: [b]bold[/b]
 italic: [i]italic[/i]
 underline: [u]underline[/u]
 color: [color=red]red text[/color]
+[list]
+[*] Item
+[*] Item2
 '''
 text = TESTTEXT
 
 if __name__ == '__main__':
-    print make_bbcode_tag('b')
     stream = BBCodeMarkupMachine(text).stream
     stream.debug()
+    print "#####################################################\n\n\n\n"
     print BBCodeMarkupMachine(text).render(enable_escaping=False)

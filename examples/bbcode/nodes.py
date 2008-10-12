@@ -4,6 +4,13 @@ from dmlt.inode import Node, Container, Text
 from dmlt.utils import escape, build_html_tag
 
 
+class Newline(Node):
+    is_linebreak_node = True
+
+    def prepare_html(self):
+        return u'<br />\n'
+
+
 class Element(Container):
     """
     Baseclass for elements.
@@ -72,3 +79,40 @@ class Color(Element):
         for item in Element.prepare_html(self):
             yield item
         yield u'</span>'
+
+
+class List(Element):
+    """
+    Sourrounds list items so that they appear as list.  Make sure that the
+    children are list items.
+    """
+
+    def __init__(self, type, children=None, id=None, style=None, class_=None):
+        Element.__init__(self, children, id, style, class_)
+        self.type = type
+
+    def prepare_html(self):
+        if self.type == 'unordered':
+            tag = u'ul'
+            cls = None
+        else:
+            tag = u'ol'
+            cls = self.type
+        yield build_html_tag(tag, id=self.id, style=self.style,
+                             classes=(self.class_, cls))
+        for item in Element.prepare_html(self):
+            yield item
+        yield u'</%s>' % tag
+
+
+class ListItem(Element):
+    """
+    Marks the children as list item.  Use in conjunction with list.
+    """
+
+    def prepare_html(self):
+        yield build_html_tag(u'li', id=self.id, style=self.style,
+                             class_=self.class_)
+        for item in Element.prepare_html(self):
+            yield item
+        yield u'</li>'

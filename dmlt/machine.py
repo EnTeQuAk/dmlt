@@ -47,8 +47,9 @@ class Directive(object):
     """
     rule = None
 
-    def __init__(self, machine):
+    def __init__(self, machine, escaping_enabled=False):
         self.machine = machine
+        self.ctx = Context(machine, escaping_enabled)
 
     @property
     def rules(self):
@@ -231,7 +232,7 @@ class MarkupMachine(object):
         flatten = u''.join
         stack = {}
         lexing_items = []
-        for d in (x(self) for x in self.directives):
+        for d in (x(self, enable_escaping) for x in self.directives):
             rules = d.rules is not None and d.rules or [d.rule]
             lexing_items.extend([(r, d) for r in rules])
         del d
@@ -371,7 +372,6 @@ class MarkupMachine(object):
         if stream.current.directive is None:
             raise TypeError('Missing directive in stream for token `%s`'
                             % stream.current.type)
-        ret = stream.current
         return stream.current.directive.parse(stream)
 
     def render(self, tree=None, format='html', enable_escaping=False):
