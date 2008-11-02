@@ -233,11 +233,28 @@ class QuoteDirective(Directive):
         return nodes.Container(ret + [nodes.Quote(children)])
 
 
+class UrlDirective(Directive):
+    rules = [
+        rule(make_bbcode_tag('url', True, False), bygroups('url_source'),
+             enter='url'),
+        rule(make_bbcode_end('url'), leave='url'),
+    ]
+
+    def parse(self, stream):
+        stream.expect('url_begin')
+        href = stream.expect('url_source').value
+        children = parse_child_nodes(stream, self, 'url_end')
+        title = children and u''.join(n.text for n in children)
+        if href is None:
+            href = title
+        stream.expect('url_end')
+        return nodes.Link(href, children, title)
+
 
 class BBCodeMarkupMachine(MarkupMachine):
     directives = [NewlineDirective, StrongDirective, EmphasizedDirective,
                   UnderlineDirective, ColorDirective, ListDirective,
-                  QuoteDirective]
+                  QuoteDirective, UrlDirective]
 
     special_directives = [TextDirective]
 
@@ -262,6 +279,8 @@ color: [color=red]red text[/color]
 [/quote]
 [quote]Ich bin ein weiterer Testtext[/quote]
 [url=http://ichbineinlink.xy]Text[/url]
+[url]http://somelink.xy[/url]
+[url=ftp://anotherlink.de][/url]
 '''
 text = TESTTEXT
 

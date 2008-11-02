@@ -1,7 +1,7 @@
 #-*- coding: utf-8 -*-
 
 from dmlt.inode import Node, Container, Text
-from dmlt.utils import escape, build_html_tag
+from dmlt.utils import escape, build_html_tag, lstrip_ext
 
 
 class Newline(Node):
@@ -129,3 +129,32 @@ class Quote(Element):
         for item in Element.prepare_html(self):
             yield item
         yield u'</blockquote>'
+
+
+class Link(Element):
+    """
+    """
+
+    def __init__(self, href, children=None, title=None, id=None,
+                 style=None, class_=None):
+        self.href = href.strip()
+        if not title:
+            title = self.href
+        self.title = lstrip_ext(title, num=1)
+
+        if not children:
+            children = [Text(self.title)]
+        Element.__init__(self, children, id, style, class_)
+
+    def prepare_html(self):
+        yield build_html_tag(u'a',
+            class_=self.class_,
+            rel=self.style=='external' and 'nofollow' or None,
+            id=self.id,
+            style=self.style,
+            title=self.title,
+            href=self.href
+        )
+        for item in Element.prepare_html(self):
+            yield item
+        yield u'</a>'
