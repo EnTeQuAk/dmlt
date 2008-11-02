@@ -29,14 +29,10 @@ class StackEmpty(DMLTError, RuntimeError):
     non-existing items in the stack
     """
 
-class HandlerNotFound(DMLTError, KeyError):
-    """
-    Raised if no markup handler was found,
-    but a regex defines one.
-    """
 
-class HandlerError(DMLTError, RuntimeError):
+class MissingContext(DMLTError, RuntimeError):
     """
-    Maybe something was misconfigured
-    due handling some ``handlers``.
+    Cannot leave the parsing-context because
+    we already leaved it or something undefined
+    happened.
     """

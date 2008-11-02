@@ -10,6 +10,7 @@
 """
 import re
 from itertools import izip
+from dmlt.errors import MissingContext
 from dmlt.datastructure import TokenStream, Context
 
 
@@ -62,6 +63,8 @@ class Directive(object):
         If the return value is `None` the node is ignored at all
         and not shown in the output.
         """
+
+    parse_eoc = None
 
     def __repr__(self):
         return '%s(%r)' % (
@@ -255,32 +258,37 @@ class MarkupMachine(object):
                             yield self.raw_name, text, self.text_directive
                         del text_buffer[:]
 
-                    if rule.enter is not None:
-                        if not rule.enter in stack and not rule.one:
-                            # open the rule to apply others to that container
-                            stack[rule.enter] = rule
-                            token = rule.enter + self._begin
-                            yield token, m.group(), directive
-                        elif not rule.enter in stack and rule.one:
+                    if rule.enter is not None or rule.leave is not None:
+                        enter, leave = rule.enter, rule.leave
+                        if enter is not None and enter in stack:
+                            # one rule matches twice, once for the beginning and once
+                            # for the end of it's context.
+                            del stack[enter]
+                            token = enter + self._end
+                            yield token, m.group(), directive, True
+                        elif enter is not None and not rule.one:
+                            # enter a new context
+                            stack[enter] = rule
+                            token = enter + self._begin
+                            yield token, m.group(), directive, False
+                        elif not enter in stack and rule.one:
                             # the rule is a standalone one so just yield
-                            # the enter point
-                            yield rule.enter, m.group(), directive
-                        elif rule.enter in stack:
-                            # and close rules that are stored in the stack
-                            del stack[rule.enter]
-                            token = rule.enter + self._end
-                            yield token, m.group(), directive
+                            # the enter point and leave the context
+                            yield enter, m.group(), directive, True
+                        elif leave is not None and leave in stack:
+                            # this rule is some quit-point to jump out of this context
+                            del stack[leave]
+                            token = leave + self._end
+                            yield token, m.group(), directive, True
+                        elif leave is not None and leave not in stack:
+                            raise MissingContext(u'cannot leave %r' % leave)
 
-                    # now process the data
+                    # process some callables like `bygroups`
                     if callable(rule.token):
                         for item in rule.token(m):
                             yield item
                     elif rule.token is not None:
-                        yield rule.token, m.group(), directive
-
-                    # apply tokens from rule.leave
-                    if rule.leave:
-                        yield rule.leave, m.group(), directive
+                        yield rule.token, m.group(), directive, False
 
                     pos = m.end()
                     break
@@ -319,8 +327,9 @@ class MarkupMachine(object):
         :return: A `TokenStream` instance.
         """
         ctx = Context(self, enable_escaping)
-        stream = TokenStream.from_tuple_iter(
-            self._process_lexing_rules(raw or self.raw, enable_escaping))
+        stream = TokenStream.from_tuple_iter(self._process_lexing_rules(
+            raw or self.raw, enable_escaping))
+
         for filter_ in self.stream_filters:
             if not isinstance(filter_, StreamFilter):
                 raise RuntimeError('%r filter is no %r instance'
@@ -369,10 +378,13 @@ class MarkupMachine(object):
         """
         Dispatch the current node from the `stream`
         """
-        if stream.current.directive is None:
+        directive = stream.current.directive
+        if directive is None:
             raise TypeError('Missing directive in stream for token `%s`'
                             % stream.current.type)
-        return stream.current.directive.parse(stream)
+        if stream.current.end_of_context and directive.parse_eoc is not None:
+            return directive.parse_eoc(stream)
+        return directive.parse(stream)
 
     def render(self, tree=None, format='html', enable_escaping=False):
         """

@@ -143,8 +143,8 @@ class UnderlineDirective(SimpleBBCodeDirective):
 class ColorDirective(Directive):
     rules = [
         rule(make_bbcode_tag('color', True, False), bygroups('color'),
-             enter='color_begin', one=True),
-        rule(r'\[\/color\]', enter='color_end', one=True)
+             enter='color'),
+        rule(make_bbcode_end('color'), leave='color')
     ]
 
     def parse(self, stream):
@@ -158,9 +158,9 @@ class ColorDirective(Directive):
 class ListDirective(Directive):
     rules = [
         rule(make_bbcode_tag('list', True, False), bygroups('list_type'),
-             enter='list_begin', one=True),
+             enter='list'),
         rule(r'\[\*\]\s*(.*)(?m)', bygroups('value'), enter='list_item', one=True),
-        rule(make_bbcode_end('list', False), enter='list_end', one=True)
+        rule(make_bbcode_end('list', False), leave='list')
     ]
 
     def parse(self, stream):
@@ -227,10 +227,19 @@ color: [color=red]red text[/color]
 [list]
 [*] Item
 [*] Item2
+[/list]
+[list=1]
+[*] enum 1
+[*] enum 2
+[/list]
+[quote=some user]Ich bin ein testtext[/quote]
+[quote]Ich bin ein weiterer Testtext[/quote]
+[url=http://ichbineinlink.xy]Text[/url]
 '''
 text = TESTTEXT
 
 if __name__ == '__main__':
+    print u'\n'.join(repr(x) for x in BBCodeMarkupMachine(text).tokenize())
     stream = BBCodeMarkupMachine(text).stream
     stream.debug()
     print "#####################################################\n\n\n\n"

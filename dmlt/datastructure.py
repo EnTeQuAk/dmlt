@@ -27,18 +27,23 @@ class Token(object):
     token.
     """
 
-    __slots__ = ('type', 'value', 'directive')
+    __slots__ = ('type', 'value', 'directive', 'end_of_context')
 
-    def __init__(self, type, value=None, directive=None):
+    def __init__(self, type, value=None, directive=None, end_of_context=False):
         self.type = type
         self.value = value
         self.directive = directive
+        self.end_of_context = end_of_context
 
     def as_tuple(self):
         return (self.type, self.value, self.directive)
 
     def __repr__(self):
         return '<Token(%r, %r, %r)>' % self.as_tuple()
+    __str__ = __repr__
+
+    def __unicode__(self):
+        return unicode(self.__str__())
 
     def __cmp__(self, other):
         if not isinstance(other, self.__class__):

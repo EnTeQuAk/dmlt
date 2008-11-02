@@ -163,8 +163,10 @@ class EmailDirective(Directive):
 
 
 class CodeDirective(Directive):
-    rule = rule(r'\{\{\{|\}\}\}', enter='code')
-
+    rules = [
+        rule(r'\{\{\{', enter='code'),
+        rule(r'\}\}\}', leave='code')
+    ]
 
     def parse(self, stream):
         stream.expect('code_begin')
