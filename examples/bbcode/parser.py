@@ -219,7 +219,6 @@ class QuoteDirective(Directive):
     ]
 
     def parse(self, stream):
-        print stream.current
         stream.expect('quote_begin')
         user = stream.expect('quote_user')
         ret = []
@@ -231,7 +230,6 @@ class QuoteDirective(Directive):
 
         children = parse_child_nodes(stream, self, 'quote_end')
         stream.expect('quote_end')
-
         return nodes.Container(ret + [nodes.Quote(children)])
 
 
