@@ -211,9 +211,35 @@ class ListDirective(Directive):
         return finish()
 
 
+class QuoteDirective(Directive):
+    rules = [
+        rule(make_bbcode_tag('quote', True, False), bygroups('quote_user'),
+             enter='quote'),
+        rule(make_bbcode_end('quote'), leave='quote')
+    ]
+
+    def parse(self, stream):
+        print stream.current
+        stream.expect('quote_begin')
+        user = stream.expect('quote_user')
+        ret = []
+
+        if user.value is not None:
+            u = user.value
+            user = u[-1] == ':' and u or u'%s said:' % u
+            ret = [nodes.Strong([nodes.Text(user)]), nodes.Newline()]
+
+        children = parse_child_nodes(stream, self, 'quote_end')
+        stream.expect('quote_end')
+
+        return nodes.Container(ret + [nodes.Quote(children)])
+
+
+
 class BBCodeMarkupMachine(MarkupMachine):
     directives = [NewlineDirective, StrongDirective, EmphasizedDirective,
-                  UnderlineDirective, ColorDirective, ListDirective]
+                  UnderlineDirective, ColorDirective, ListDirective,
+                  QuoteDirective]
 
     special_directives = [TextDirective]
 
@@ -232,13 +258,16 @@ color: [color=red]red text[/color]
 [*] enum 1
 [*] enum 2
 [/list]
-[quote=some user]Ich bin ein testtext[/quote]
+[quote=some user]Ich bin ein testtext
+
+[b]mööp[/b]
+[/quote]
 [quote]Ich bin ein weiterer Testtext[/quote]
 [url=http://ichbineinlink.xy]Text[/url]
 '''
 text = TESTTEXT
 
-if __name__ == '__main__':
+def main():
     print u'\n'.join(repr(x) for x in BBCodeMarkupMachine(text).tokenize())
     stream = BBCodeMarkupMachine(text).stream
     stream.debug()

@@ -116,3 +116,16 @@ class ListItem(Element):
         for item in Element.prepare_html(self):
             yield item
         yield u'</li>'
+
+
+class Quote(Element):
+    """
+    A blockquote.
+    """
+
+    def prepare_html(self):
+        yield build_html_tag(u'blockquote', id=self.id, style=self.style,
+                             class_=self.class_)
+        for item in Element.prepare_html(self):
+            yield item
+        yield u'</blockquote>'
