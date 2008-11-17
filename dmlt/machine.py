@@ -200,6 +200,9 @@ class MarkupMachine(object):
     # NOTE: this needs
     escape_character = '\\'
 
+    #
+    __document_node__ = None
+
     def __init__(self, raw):
         self.raw = raw
         self._stream = None
@@ -354,7 +357,11 @@ class MarkupMachine(object):
             stream = self.tokenize(enable_escaping=enable_escaping)
 
         # create the node-tree
-        document = Document()
+        if self.__document_node__ is None:
+            document = Document()
+        else:
+            document = self.__document_node__()
+
         while not stream.eof:
             node = self.dispatch_node(stream)
             if node is not None:

@@ -4,3 +4,4 @@ My personal TODO list
  - check and implement buffering for the TokenStream
  - write unittests for every component (still in progress)
  - update the examples
+ - check for some hook ups to add new class-attributes to `inode` nodes.

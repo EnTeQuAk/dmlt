@@ -4,6 +4,7 @@ from dmlt.machine import MarkupMachine, Directive, RawDirective, \
                          rule, bygroups
 from dmlt.utils import parse_child_nodes, filter_stream
 import nodes
+from filters import NODE_FILTERS
 
 
 _number_re = re.compile(r'\d+(?:\.\d*)?')
@@ -14,6 +15,16 @@ _css_color_names = [
     'aqua', 'black', 'blue', 'fuchsia', 'gray', 'green', 'lime', 'yellow'
     'maroon', 'navy', 'olive', 'purple', 'red', 'silver', 'teal', 'white'
 ]
+
+_url_pattern = (
+    # urls with netloc
+    r'(?:(?:https?|ftps?|file|ssh|mms|svn(?:\+ssh)?|git|dict|nntp|irc|'
+    r'rsync|smb|apt)://|'
+    # urls without netloc
+    r'(?:mailto|telnet|s?news|sips?|skype):)')
+
+_free_link_re = re.compile(r'(%s[^\s/]+(/[^\s.,:;?]*([.,:;?][^\s.,:;?]'
+                           '+)*)?)(?i)' % _url_pattern)
 
 
 class Value(object):
@@ -252,9 +263,11 @@ class UrlDirective(Directive):
 
 
 class BBCodeMarkupMachine(MarkupMachine):
-    directives = [NewlineDirective, StrongDirective, EmphasizedDirective,
+    __document_node__ = nodes.Document
+    directives = [StrongDirective, EmphasizedDirective,
                   UnderlineDirective, ColorDirective, ListDirective,
                   QuoteDirective, UrlDirective]
+    node_filters = NODE_FILTERS
 
     special_directives = [TextDirective]
 

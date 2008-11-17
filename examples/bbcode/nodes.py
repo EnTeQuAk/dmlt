@@ -1,7 +1,56 @@
 #-*- coding: utf-8 -*-
 
-from dmlt.inode import Node, Container, Text
+from dmlt.inode import Node as BaseNode, Container as BaseContainer, Text as BaseText
 from dmlt.utils import escape, build_html_tag, lstrip_ext
+
+
+class Node(BaseNode):
+    allows_paragraphs = False
+    is_paragraph = False
+    is_block_tag = False
+
+
+class Container(Node):
+    """
+    A basic node with children.
+    """
+    is_container = True
+
+    def __init__(self, children=None):
+        if children is None:
+            children = []
+        self.children = children
+
+    @property
+    def text(self):
+        return u''.join(x.text for x in self.children)
+
+    def prepare_html(self):
+        for child in self.children:
+            for item in child.prepare_html():
+                yield item
+
+
+class Document(Container):
+    """
+    Outermost node.
+    """
+    is_document = True
+    allows_paragraphs = True
+
+
+class Text(Node):
+    """
+    Represents text.
+    """
+
+    is_text_node = True
+
+    def __init__(self, text=u''):
+        self.text = text
+
+    def prepare_html(self):
+        yield escape(self.text)
 
 
 class Newline(Node):
@@ -15,6 +64,12 @@ class Element(Container):
     """
     Baseclass for elements.
     """
+    # theese needs to be hooked up because `Container` does not inherit
+    # from our self defined `Node`.
+    allows_paragraphs = False
+    is_paragraph = False
+    is_block_tag = False
+
 
     def __init__(self, children=None, id=None, style=None, class_=None):
         Container.__init__(self, children)
@@ -81,11 +136,33 @@ class Color(Element):
         yield u'</span>'
 
 
+class Paragraph(Element):
+    """
+    A paragraph.  Everything is in there :-)
+    (except of block level stuff)
+    """
+    is_block_tag = True
+    is_paragraph = True
+    is_linebreak_node = True
+
+    @property
+    def text(self):
+        return Element.text.__get__(self).strip() + '\n\n'
+
+    def prepare_html(self):
+        yield build_html_tag(u'p', id=self.id, style=self.style,
+                             class_=self.class_)
+        for item in Element.prepare_html(self):
+            yield item
+        yield u'</p>'
+
+
 class List(Element):
     """
     Sourrounds list items so that they appear as list.  Make sure that the
     children are list items.
     """
+    is_block_tag = True
 
     def __init__(self, type, children=None, id=None, style=None, class_=None):
         Element.__init__(self, children, id, style, class_)
@@ -109,6 +186,8 @@ class ListItem(Element):
     """
     Marks the children as list item.  Use in conjunction with list.
     """
+    is_block_tag = True
+    allows_paragraphs = True
 
     def prepare_html(self):
         yield build_html_tag(u'li', id=self.id, style=self.style,
@@ -122,6 +201,8 @@ class Quote(Element):
     """
     A blockquote.
     """
+    allows_paragraphs = True
+    is_block_tag = True
 
     def prepare_html(self):
         yield build_html_tag(u'blockquote', id=self.id, style=self.style,
