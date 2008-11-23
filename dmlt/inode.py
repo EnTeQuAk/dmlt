@@ -8,8 +8,9 @@
     :copyright: 2008 by Christopher Grebs.
     :license: BSD, see LICENSE for more details.
 """
-from dmlt.machine import NodeQueryMixin
+from dmlt import events
 from dmlt.utils import node_repr, escape, striptags
+from dmlt.query import NodeQueryMixin
 
 
 class BaseNode(object):
@@ -136,6 +137,10 @@ class Document(Container):
     Outermost node.
     """
     is_document = True
+
+@events.register('define-document-node')
+def _handle_define_document_node(manager, *args, **kwargs):
+    return Document
 
 
 class Raw(Container):

@@ -1,2 +1,2 @@
-from bbcode import parser
+from advanced import parser
 parser.main()

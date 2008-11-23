@@ -242,9 +242,10 @@ class Context(dict):
     supports some new features like *callbacks* for the
     `update` method.
 
-    It's used for node and stream filters to set some
-    special environment variables in the context and to
-    have a reference to the current `MarkupMachine` instance.
+    It's used for the `MarkupMachine` to store special
+    environment variables as well as for node and stream filters
+    to set some special environment variables in the context
+    and to have a reference to the current `MarkupMachine` instance.
 
     :param machine: The current `MarkupMachine` instance.
     """

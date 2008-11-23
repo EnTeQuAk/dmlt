@@ -1,5 +1,5 @@
 #-*- coding: utf-8 -*-
-
+from dmlt import events
 from dmlt.inode import Node as BaseNode, Container as BaseContainer, Text as BaseText
 from dmlt.utils import escape, build_html_tag, lstrip_ext
 
@@ -37,6 +37,10 @@ class Document(Container):
     """
     is_document = True
     allows_paragraphs = True
+
+@events.register('define-document-node')
+def _handle_define_document_node(manager, *args, **kwargs):
+    return Document
 
 
 class Text(Node):

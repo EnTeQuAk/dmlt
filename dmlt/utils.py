@@ -13,6 +13,8 @@ import locale
 from cPickle import loads, dumps, HIGHEST_PROTOCOL
 from htmlentitydefs import name2codepoint
 from xml.sax.saxutils import quoteattr
+from collections import defaultdict
+
 
 _html_entities = name2codepoint.copy()
 _html_entities['apos'] = 39
@@ -317,3 +319,31 @@ def flatten_iterator(iter):
                 yield sub
         else:
             yield item
+
+
+def patch_wrapper(decorator, base):
+    decorator.__name__ = base.__name__
+    decorator.__module__ = base.__module__
+    decorator.__doc__ = base.__doc__
+    decorator.__dict__ = base.__dict__
+    return decorator
+
+
+class AdvancedDefaultdict(defaultdict):
+    """
+    Some small modification of the builtin defaultdict
+    to apply the `key` to the `default_factory` so
+    that we can return some more appropriate values.
+    """
+
+    def __init__(self, default_factory=None):
+        if default_factory is None:
+            defaultdict.__init__(self)
+        else:
+            defaultdict.__init__(self, default_factory)
+
+    def __getitem__(self, key):
+        if self.default_factory is None:
+            raise KeyError(key)
+        self[key] = value = self.default_factory(key)
+        return value

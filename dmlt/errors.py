@@ -36,3 +36,10 @@ class MissingContext(DMLTError, RuntimeError):
     we already leaved it or something undefined
     happened.
     """
+
+
+class EventNotFound(DMLTError, RuntimeError):
+    """
+    This exception is raised if the event tried to register
+    is not supported.
+    """

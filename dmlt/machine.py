@@ -10,6 +10,8 @@
 """
 import re
 from itertools import izip
+from dmlt import events
+from dmlt.utils import AdvancedDefaultdict
 from dmlt.errors import MissingContext
 from dmlt.datastructure import TokenStream, Context
 
@@ -79,96 +81,13 @@ class RawDirective(Directive):
     def parse(self, stream):
         """Process raw data"""
         from dmlt.inode import Text
-        return Text(stream.current.value)
+        ret = stream.current.value
+        stream.next()
+        return Text(ret)
 
-
-class NodeQueryMixin(object):
-    """
-    Adds a `query` property to nodes implementing this interface. The query
-    attribute returns a new `Query` object for the node that implements the
-    query interface.
-    """
-
-    @property
-    def query(self):
-        return Query((self,))
-
-
-class Query(object):
-    """
-    Helper class to traverse a tree of nodes.  Useful for tree processor
-    macros that collect data from the final tree.
-    """
-
-    def __init__(self, nodes, recurse=True):
-        self.nodes = nodes
-        self._nodeiter = iter(self.nodes)
-        self.recurse = recurse
-
-    def __iter__(self):
-        return self
-
-    def next(self):
-        return self._nodeiter.next()
-
-    @property
-    def has_any(self):
-        """Return `True` if at least one node was found."""
-        try:
-            self._nodeiter.next()
-        except StopIteration:
-            return False
-        return True
-
-    @property
-    def children(self):
-        """Return a new `Query` just for the direct children."""
-        return Query(self.nodes, False)
-
-    @property
-    def all(self):
-        """Retrn a `Query` object for all nodes this node holds."""
-        def walk(nodes):
-            for node in nodes:
-                yield node
-                if self.recurse and node.is_container:
-                    for result in walk(node.children):
-                        yield result
-        return Query(walk(self))
-
-    def by_type(self, type):
-        """Performs an instance test on all nodes."""
-        return Query(n for n in self.all if isinstance(n, type))
-
-    def text_nodes(self):
-        """Only text nodes."""
-        return Query(n for n in self.all if n.is_text_node)
-
-
-class StreamFilter(object):
-    """Baseclass for all stream filters."""
-
-    def process(self, stream, ctx):
-        """
-        This method is allowed to modify the token stream as needed.
-        It can be used to order some tokens that are hard to parse
-        with regular expressions.
-        Mostly it's more safe to return a new TokenStream instance
-        as TokenStream has no defined behaviour with many pushed
-        tokens.
-        """
-        return stream
-
-
-class NodeFilter(object):
-    """Baseclass for all node filters."""
-
-    def process(self, tree, ctx):
-        """
-        This method is called at the end of the node-tree-processing
-        to modify the tree in place. It's also safe to return a new tree.
-        """
-        return tree
+@events.register('define-raw-directive')
+def _handle_define_raw_directive(manager, *args, **kwargs):
+    return RawDirective
 
 
 class MarkupMachine(object):
@@ -179,46 +98,27 @@ class MarkupMachine(object):
     called node-tree that represents the parsed document
     in an abstract form.
     """
-
-    directives = []
-    special_directives = []
-    text_directive = RawDirective
-    raw_name = text_directive.name
-
-    # stream filters
-    stream_filters = []
-
-    # node filters
-    node_filters = []
-
     # token-stack-state names. They're defined here so
     # that it's possible to overwrite them
     _begin = '_begin'
     _end = '_end'
 
-    # Default character for escaping markup tokens
-    # NOTE: this needs
     escape_character = '\\'
-
-    #
-    __document_node__ = None
 
     def __init__(self, raw):
         self.raw = raw
         self._stream = None
         # process special directives to init some special features
-        self._process_special_directives()
+        self._process_special_events()
 
     def __repr__(self):
         return '<MarkupMachine(%s)>' % u', '.join(self.directives)
 
-    def _process_special_directives(self):
-        """Process directives that hooks some some special into the machine"""
-        for directive in self.special_directives:
-            #: raw directive
-            if RawDirective in directive.__bases__:
-                self.text_directive = directive(self)
-                self.raw_name = self.text_directive.name
+    def _process_special_events(self):
+        # raw_directive
+        self.raw_directive = rw = events.emit_ovr('define-raw-directive')(self)
+        # and the raw directive name
+        self.raw_name = rw.name
 
     def _process_lexing_rules(self, raw, enable_escaping=False):
         """
@@ -258,7 +158,7 @@ class MarkupMachine(object):
                     if text_buffer:
                         text = flatten(text_buffer)
                         if text:
-                            yield self.raw_name, text, self.text_directive
+                            yield self.raw_name, text, self.raw_directive
                         del text_buffer[:]
 
                     if rule.enter is not None or rule.leave is not None:
@@ -319,7 +219,7 @@ class MarkupMachine(object):
         if text_buffer:
             text = flatten(text_buffer)
             if text:
-                yield self.raw_name, text, self.text_directive
+                yield self.raw_name, text, self.raw_directive
 
     def tokenize(self, raw=None, enable_escaping=False):
         """
@@ -333,11 +233,11 @@ class MarkupMachine(object):
         stream = TokenStream.from_tuple_iter(self._process_lexing_rules(
             raw or self.raw, enable_escaping))
 
-        for filter_ in self.stream_filters:
-            if not isinstance(filter_, StreamFilter):
-                raise RuntimeError('%r filter is no %r instance'
-                    % (type(filter_), StreamFilter))
-            stream = filter_.process(stream, ctx)
+        for callback in events.iter_callbacks('process-stream'):
+            ret = callback(stream, ctx)
+            if ret is not None:
+                stream = ret
+
         return stream
 
     def parse(self, stream=None, inline=False, enable_escaping=False):
@@ -352,15 +252,11 @@ class MarkupMachine(object):
         :return:        A node-tree that represents the finished document
                         in an abstract form.
         """
-        from dmlt.inode import Document
         if stream is None:
             stream = self.tokenize(enable_escaping=enable_escaping)
 
         # create the node-tree
-        if self.__document_node__ is None:
-            document = Document()
-        else:
-            document = self.__document_node__()
+        document = events.emit_ovr('define-document-node')()
 
         while not stream.eof:
             node = self.dispatch_node(stream)
@@ -371,11 +267,10 @@ class MarkupMachine(object):
 
         # apply node-filters
         ctx = Context(self, enable_escaping)
-        for filter_ in self.node_filters:
-            if not isinstance(filter_, NodeFilter):
-                raise RuntimeError('%r filter is no %r instance'
-                    % (type(filter_), NodeFilter))
-            document = filter_.process(document, ctx)
+        for callback in events.iter_callbacks('process-doc-tree'):
+            ret = callback(document, ctx)
+            if ret is not None:
+                document = ret
 
         if inline:
             return document.children

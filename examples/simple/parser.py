@@ -1,6 +1,7 @@
 #-*- coding: utf-8 -*-
 import re, os
 from os.path import join
+from dmlt import events
 from dmlt.machine import MarkupMachine, Directive, RawDirective, \
     rule, bygroups
 from dmlt.utils import escape, strip_ext, parse_child_nodes, filter_stream, \
@@ -24,6 +25,10 @@ class TextDirective(RawDirective):
 
     def parse(self, stream):
         return nodes.Text(stream.expect('text').value)
+
+@events.register('define-raw-directive')
+def _handle_register_raw_directive(mnager, *args, **kwargs):
+    return TextDirective
 
 
 class StrongDirective(Directive):

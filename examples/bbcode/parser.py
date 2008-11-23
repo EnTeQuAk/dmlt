@@ -1,10 +1,10 @@
 #-*- coding: utf-8 -*-
 import re
+from dmlt import events
 from dmlt.machine import MarkupMachine, Directive, RawDirective, \
                          rule, bygroups
 from dmlt.utils import parse_child_nodes, filter_stream
 import nodes
-from filters import NODE_FILTERS
 
 
 _number_re = re.compile(r'\d+(?:\.\d*)?')
@@ -114,6 +114,9 @@ class TextDirective(RawDirective):
 
     def parse(self, stream):
         return nodes.Text(stream.expect('text').value)
+@events.register('define-raw-directive')
+def _handle_define_raw_Directive(*args, **kwargs):
+    return TextDirective
 
 
 class NewlineDirective(Directive):
@@ -263,14 +266,9 @@ class UrlDirective(Directive):
 
 
 class BBCodeMarkupMachine(MarkupMachine):
-    __document_node__ = nodes.Document
     directives = [StrongDirective, EmphasizedDirective,
                   UnderlineDirective, ColorDirective, ListDirective,
                   QuoteDirective, UrlDirective]
-    node_filters = NODE_FILTERS
-
-    special_directives = [TextDirective]
-
 
 
 TESTTEXT = u'''\
