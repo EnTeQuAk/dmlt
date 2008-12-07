@@ -10,6 +10,7 @@
 """
 import re
 from itertools import izip
+from collections import deque
 from dmlt import events
 from dmlt.utils import AdvancedDefaultdict
 from dmlt.errors import MissingContext
@@ -105,6 +106,15 @@ class MarkupMachine(object):
 
     escape_character = '\\'
 
+    # The restrictive mode is some special feature that enables
+    # dmlt to manage the stack itselfs. That way every state that
+    # was opened right after state quo will be announced and closed
+    # as well. Set this to `False` it you don't wanna matter about that.
+    # If it is disabled dmlt is looking for the last entry for the state
+    # that needs to be closed in the stack and just removes it. All other
+    # states won't be touched.
+    restrictive_mode = False
+
     def __init__(self, raw):
         self.raw = raw
         self._stream = None
@@ -136,7 +146,7 @@ class MarkupMachine(object):
         text_buffer = []
         add_text = text_buffer.append
         flatten = u''.join
-        stack = {}
+        stack = deque([''])
         lexing_items = []
         for d in (x(self, enable_escaping) for x in self.directives):
             rules = d.rules is not None and d.rules or [d.rule]
@@ -163,26 +173,30 @@ class MarkupMachine(object):
 
                     if rule.enter is not None or rule.leave is not None:
                         enter, leave = rule.enter, rule.leave
-                        if enter is not None and enter in stack:
-                            # one rule matches twice, once for the beginning and once
-                            # for the end of it's context.
-                            del stack[enter]
-                            token = enter + self._end
-                            yield token, m.group(), directive, True
-                        elif enter is not None and not rule.one:
-                            # enter a new context
-                            stack[enter] = rule
-                            token = enter + self._begin
-                            yield token, m.group(), directive, False
-                        elif not enter in stack and rule.one:
+                        if enter not in stack and rule.one:
                             # the rule is a standalone one so just yield
                             # the enter point and leave the context
                             yield enter, m.group(), directive, True
                         elif leave is not None and leave in stack:
-                            # this rule is some quit-point to jump out of this context
-                            del stack[leave]
+                            # there is some leaving-point defined so jump out
+                            # of this context
+
+                            # in restrictive mode we remove all tokens from the stack
+                            # until we reach the token to leave.
+                            if self.restrictive_mode:
+                                while stack[0] != leave:
+                                    yield stack[0], None, None, True
+                                    stack.popleft()
+                                stack.popleft()
+                            else:
+                                stack.remove(leave)
                             token = leave + self._end
                             yield token, m.group(), directive, True
+                        elif enter is not None and not rule.one:
+                            # enter a new context
+                            stack.appendleft(enter)
+                            token = enter + self._begin
+                            yield token, m.group(), directive, False
                         elif leave is not None and leave not in stack:
                             raise MissingContext(u'cannot leave %r' % leave)
 

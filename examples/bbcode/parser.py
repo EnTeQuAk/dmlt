@@ -92,7 +92,7 @@ def make_bbcode_end(name, join=False):
     return (join and r'|' or r'') + _bb_end % name
 
 
-def make_bbcode_tag(name, options=False, end=True):
+def make_bbcode_tag(name, options=False):
     """
     :Parameters:
         `name`
@@ -101,11 +101,8 @@ def make_bbcode_tag(name, options=False, end=True):
         `options`
             Append a regular expression to identify options::
                 [tag=option1, option2][/tag]
-        `end'
-            If `True` append the end-tag ([/tag]).
     """
-    _start = _bb_start % (name, options and _bb_option_parts or '')
-    expression = r'%s%s' % (_start, end and make_bbcode_end(name, True) or r'')
+    expression = _bb_start % (name, options and _bb_option_parts or '')
     return expression
 
 
@@ -129,9 +126,16 @@ class NewlineDirective(Directive):
 
 class SimpleBBCodeDirective(Directive):
     __directive_node__ = None
+    name = None
+
+    @property
+    def rules(self):
+        return [
+            rule(make_bbcode_tag(self.name), enter=self.name),
+            rule(make_bbcode_end(self.name), leave=self.name)]
 
     def parse(self, stream):
-        dn = self.rule.enter
+        dn = self.name
         begin, end = '%s_begin' % dn, '%s_end' % dn
         stream.expect(begin)
         children = parse_child_nodes(stream, self, end)
@@ -141,22 +145,22 @@ class SimpleBBCodeDirective(Directive):
 
 class StrongDirective(SimpleBBCodeDirective):
     __directive_node__ = nodes.Strong
-    rule = rule(make_bbcode_tag('b'), enter='b')
+    name = 'b'
 
 
 class EmphasizedDirective(SimpleBBCodeDirective):
     __directive_node__ = nodes.Emphasized
-    rule = rule(make_bbcode_tag('i'), enter='i')
+    name = 'i'
 
 
 class UnderlineDirective(SimpleBBCodeDirective):
     __directive_node__ = nodes.Underline
-    rule = rule(make_bbcode_tag('u'), enter='u')
+    name = 'u'
 
 
 class ColorDirective(Directive):
     rules = [
-        rule(make_bbcode_tag('color', True, False), bygroups('color'),
+        rule(make_bbcode_tag('color', True), bygroups('color'),
              enter='color'),
         rule(make_bbcode_end('color'), leave='color')
     ]
@@ -171,7 +175,7 @@ class ColorDirective(Directive):
 
 class ListDirective(Directive):
     rules = [
-        rule(make_bbcode_tag('list', True, False), bygroups('list_type'),
+        rule(make_bbcode_tag('list', True), bygroups('list_type'),
              enter='list'),
         rule(r'\[\*\]\s*(.*)(?m)', bygroups('value'), enter='list_item', one=True),
         rule(make_bbcode_end('list', False), leave='list')
@@ -179,6 +183,7 @@ class ListDirective(Directive):
 
     def parse(self, stream):
         if stream.test('list_item'):
+            # parse list items
             stream.next()
             val = stream.expect('value').value
             return nodes.ListItem([nodes.Text(val)])
@@ -188,7 +193,7 @@ class ListDirective(Directive):
 
         def is_empty_node(node):
             return node.is_linebreak_node or \
-                    (node.is_text_node and not node.text.strip())
+                   (node.is_text_node and not node.text.strip())
 
         def finish_if_list_end():
             if stream.test('list_end'):
@@ -227,7 +232,7 @@ class ListDirective(Directive):
 
 class QuoteDirective(Directive):
     rules = [
-        rule(make_bbcode_tag('quote', True, False), bygroups('quote_user'),
+        rule(make_bbcode_tag('quote', True), bygroups('quote_user'),
              enter='quote'),
         rule(make_bbcode_end('quote'), leave='quote')
     ]
@@ -249,7 +254,7 @@ class QuoteDirective(Directive):
 
 class UrlDirective(Directive):
     rules = [
-        rule(make_bbcode_tag('url', True, False), bygroups('url_source'),
+        rule(make_bbcode_tag('url', True), bygroups('url_source'),
              enter='url'),
         rule(make_bbcode_end('url'), leave='url'),
     ]
@@ -275,18 +280,18 @@ TESTTEXT = u'''\
 bold: [b]bold[/b]
 italic: [i]italic[/i]
 underline: [u]underline[/u]
-color: [color=red]red text[/color]
+color: [color=red][color=blue]red text[/color][/color]
 [list]
 [*] Item
 [*] Item2
 [/list]
 [list=1]
-[*] enum 1
+[*] [b]enum 1[/b]
 [*] enum 2
 [/list]
 [quote=some user]Ich bin ein testtext
 
-[b]mööp[/b]
+[b][b]mööp[/b][/b]
 [/quote]
 [quote]Ich bin ein weiterer Testtext[/quote]
 [url=http://ichbineinlink.xy]Text[/url]

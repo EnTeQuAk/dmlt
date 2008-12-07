@@ -32,7 +32,7 @@ def _handle_register_raw_directive(mnager, *args, **kwargs):
 
 
 class StrongDirective(Directive):
-    rule = rule(r'\*\*', enter='strong')
+    rule = rule(r'\*\*', enter='strong', leave='strong')
 
     def parse(self, stream):
         stream.expect('strong_begin')
@@ -42,7 +42,7 @@ class StrongDirective(Directive):
 
 
 class UnderlineDirective(Directive):
-    rule = rule(r'__', enter='underline')
+    rule = rule(r'__', enter='underline', leave='strong')
 
     def parse(self, stream):
         stream.expect('underline_begin')
@@ -52,7 +52,7 @@ class UnderlineDirective(Directive):
 
 
 class EmphasizedDirective(Directive):
-    rule = rule(r"''", enter='emphasized')
+    rule = rule(r"''", enter='emphasized', leave='strong')
 
     def parse(self, stream):
         stream.expect('emphasized_begin')
@@ -62,7 +62,7 @@ class EmphasizedDirective(Directive):
 
 
 class EscapedCodeDirective(Directive):
-    rule = rule(r'\`\`', enter='escaped_code')
+    rule = rule(r'\`\`', enter='escaped_code', leave='strong')
 
     def parse(self, stream):
         stream.expect('escaped_code_begin')
@@ -75,7 +75,7 @@ class EscapedCodeDirective(Directive):
 
 
 class SubscriptDirective(Directive):
-    rule = rule(r',,', enter='sub')
+    rule = rule(r',,', enter='sub', leave='strong')
 
     def parse(self, stream):
         stream.expect('sub_begin')
@@ -85,7 +85,9 @@ class SubscriptDirective(Directive):
 
 
 class SuperscriptDirective(Directive):
-    rule = rule(r'\^\^\(|\)\^\^', enter='sup')
+    rules = [
+        rule(r'\^\^\(', enter='sup'),
+        rule(r'\)\^\^', leave='sup')]
 
     def parse(self, stream):
         stream.expect('sup_begin')
@@ -96,9 +98,8 @@ class SuperscriptDirective(Directive):
 
 class StrokeDirective(Directive):
     rules = [
-        rule(r'~~\(', enter='stroke_begin', one=True),
-        rule(r'\)~~', enter='stroke_end', one=True)
-    ]
+        rule(r'~~\(', enter='stroke'),
+        rule(r'\)~~', leave='stroke')]
 
     def parse(self, stream):
         if stream.test('stroke_end'):
@@ -112,7 +113,9 @@ class StrokeDirective(Directive):
 
 
 class BigDirective(Directive):
-    rule = rule(r'\+~|~\+', enter='big')
+    rules = [
+        rule(r'\+~', enter='big'),
+        rule(r'~\+', leave='big')]
 
     def parse(self, stream):
         stream.expect('big_begin')
@@ -122,7 +125,9 @@ class BigDirective(Directive):
 
 
 class SmallDirective(Directive):
-    rule = rule(r'-~|~-', enter='small')
+    rules = [
+        rule(r'-~', enter='small'),
+        rule(r'~-', leave='small')]
 
     def parse(self, stream):
         stream.expect('small_begin')

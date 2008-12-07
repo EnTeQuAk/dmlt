@@ -39,37 +39,37 @@ class SimpleMarkupDirective(Directive):
 
 class EmphasizedDirective(SimpleMarkupDirective):
     __directive_node__ = nodes.Emphasized
-    rule = rule(r"''", enter='emphasized')
+    rule = rule(r"''", enter='emphasized', leave='emphasized')
 
 
 class StrongDirective(SimpleMarkupDirective):
     __directive_node__ = nodes.Strong
-    rule = rule(r'\*\*', enter='strong')
+    rule = rule(r'\*\*', enter='strong', leave='strong')
 
 
 class UnderlineDirective(SimpleMarkupDirective):
     __directive_node__ = nodes.Underline
-    rule = rule(r'__', enter='underline')
+    rule = rule(r'__', enter='underline', leave='underline')
 
 
 class SubscriptDirective(SimpleMarkupDirective):
     __directive_node__ = nodes.Sub
-    rule = rule(r',,\(|\),,', enter='sub')
+    rule = rule(r',,\(|\),,', enter='sub', leave='sub')
 
 
 class SuperscriptDirective(SimpleMarkupDirective):
     __directive_node__ = nodes.Sup
-    rule = rule(r'\^\^\(|\)\^\^', enter='sup')
+    rule = rule(r'\^\^\(|\)\^\^', enter='sup', leave='sup')
 
 
 class BigDirective(SimpleMarkupDirective):
     __directive_node__ = nodes.Big
-    rule = rule(r'\+~\(|\)~\+', enter='big')
+    rule = rule(r'\+~\(|\)~\+', enter='big', leave='big')
 
 
 class SmallDirective(SimpleMarkupDirective):
     __directive_node__ = nodes.Small
-    rule = rule(r'-~\(|\)~-', enter='small')
+    rule = rule(r'-~\(|\)~-', enter='small', leave='small')
 
 
 class AdvancedMarkupMachine(MarkupMachine):
