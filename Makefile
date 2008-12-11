@@ -24,6 +24,3 @@ reindent:
 
 test:
 	@nosetests
-
-pylint:
-	@pylint --rcfile scripts/pylintrc dmlt
