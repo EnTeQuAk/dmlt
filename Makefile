@@ -24,3 +24,4 @@ reindent:
 
 test:
 	@nosetests
+
