@@ -11,10 +11,14 @@
 import re
 from itertools import izip
 from collections import deque
-from dmlt import events
+from dmlt import events, node
+from dmlt.exc import MissingContext
 from dmlt.utils import AdvancedDefaultdict
-from dmlt.errors import MissingContext
 from dmlt.datastructure import TokenStream, Context
+
+
+__all__ = ('bygroups', 'rule', 'Directive', 'MarkupMachine')
+
 
 
 def bygroups(*args):
@@ -81,10 +85,9 @@ class RawDirective(Directive):
 
     def parse(self, stream):
         """Process raw data"""
-        from dmlt.inode import Text
         ret = stream.current.value
         stream.next()
-        return Text(ret)
+        return node.Text(ret)
 
 @events.register('define-raw-directive')
 def _handle_define_raw_directive(manager, *args, **kwargs):
@@ -176,7 +179,17 @@ class MarkupMachine(object):
                         if enter not in stack and rule.one:
                             # the rule is a standalone one so just yield
                             # the enter point and leave the context
-                            yield enter, m.group(), directive, True
+                            token = leave and enter + self._begin or enter
+                            yield token, m.group(), directive, True
+
+                            # special case handling XXX: needs documentation
+                            if leave:
+                                # process special tokens before apply closing items.
+                                if callable(rule.token):
+                                    for item in rule.token(m):
+                                        yield item
+                                token = leave + self._end
+                                yield token, m.group(), directive, False
                         elif leave is not None and leave in stack:
                             # there is some leaving-point defined so jump out
                             # of this context

@@ -1,6 +1,6 @@
 #-*- coding: utf-8 -*-
 from dmlt import events
-from dmlt.inode import Node as BaseNode, Container as BaseContainer, Text as BaseText
+from dmlt.node import Node as BaseNode, Container as BaseContainer, Text as BaseText
 from dmlt.utils import escape, build_html_tag, lstrip_ext
 
 

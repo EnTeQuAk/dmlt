@@ -1,5 +1,5 @@
 #-*- coding: utf-8 -*-
-from dmlt.inode import Node, Container, Text
+from dmlt.node import Node, Container, Text
 from dmlt.utils import escape, build_html_tag
 
 

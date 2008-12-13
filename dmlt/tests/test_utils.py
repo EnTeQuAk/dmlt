@@ -40,3 +40,5 @@ def test_replace_entities():
 
 def test_striptags():
     assert_equal(striptags('foo <b>bar</b> foo<ins>baaaar</ins>'), u'foo bar foobaaaar')
+    # tested tags etc. are stripped as well
+    assert_equal(striptags('<fooo<bar>>baz'), u'>baz')

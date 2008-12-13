@@ -9,8 +9,8 @@
     :copyright: 2008 by Christopher Grebs.
     :license: BSD, see LICENSE for details.
 """
+from dmlt.exc import EventNotFound
 from dmlt.utils import patch_wrapper
-from dmlt.errors import EventNotFound
 from collections import deque
 
 

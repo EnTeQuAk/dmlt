@@ -177,7 +177,8 @@ class ListDirective(Directive):
     rules = [
         rule(make_bbcode_tag('list', True), bygroups('list_type'),
              enter='list'),
-        rule(r'\[\*\]\s*(.*)(?m)', bygroups('value'), enter='list_item', one=True),
+        rule(r'\[\*\]\s*(.*)(?m)', bygroups('value'), enter='list_item',
+             leave='list_item', one=True),
         rule(make_bbcode_end('list', False), leave='list')
     ]
 
@@ -185,7 +186,7 @@ class ListDirective(Directive):
         if stream.test('list_item'):
             # parse list items
             stream.next()
-            val = stream.expect('value').value
+            val = self.machine.dispatch_node(stream)
             return nodes.ListItem([nodes.Text(val)])
 
         def finish():
@@ -274,6 +275,7 @@ class BBCodeMarkupMachine(MarkupMachine):
     directives = [StrongDirective, EmphasizedDirective,
                   UnderlineDirective, ColorDirective, ListDirective,
                   QuoteDirective, UrlDirective]
+    restrictive_mode = True
 
 
 TESTTEXT = u'''\
@@ -297,6 +299,8 @@ color: [color=red][color=blue]red text[/color][/color]
 [url=http://ichbineinlink.xy]Text[/url]
 [url]http://somelink.xy[/url]
 [url=ftp://anotherlink.de][/url]
+
+[list] [*] Foo [/list] [quote] [/list]
 '''
 text = TESTTEXT
 
