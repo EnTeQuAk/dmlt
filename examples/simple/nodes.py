@@ -2,7 +2,7 @@
 import re
 import unicodedata
 from urlparse import urlparse, urlunparse
-from dmlt.inode import Node, Container, Text, HTML
+from dmlt.node import Node, Container, Text, HTML
 from dmlt.utils import escape, build_html_tag, striptags, lstrip_ext
 
 

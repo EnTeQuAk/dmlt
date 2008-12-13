@@ -1,7 +1,9 @@
 #-*- coding: utf-8 -*-
 
 from nose.tools import *
+from dmlt.exc import StackEmpty
 from dmlt.datastructure import Stack, Token, _undefined
+
 
 TEST_TOKENS = ['bold', 'italic', 'uff', 'papapapa', 'foo', 'python',
     'spaghetti', 'car', 'mom']
@@ -31,6 +33,7 @@ def test_pop():
     assert_equal(stack.current, 'foo')
     assert_equal(stack.pop(), 'foo')
     assert_equal(stack.current, _undefined)
+    assert_raises(StackEmpty, stack.pop)
 
 
 def test_push():

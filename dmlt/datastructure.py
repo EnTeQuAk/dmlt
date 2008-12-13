@@ -11,7 +11,7 @@
 """
 import sys
 from copy import copy as ccopy
-from dmlt.errors import StackEmpty
+from dmlt.exc import StackEmpty
 
 
 __all__ = ('Token', 'TokenStream', 'Stack', 'Context')
