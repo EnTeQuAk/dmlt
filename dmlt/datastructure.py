@@ -36,10 +36,10 @@ class Token(object):
         self.end_of_context = end_of_context
 
     def as_tuple(self):
-        return (self.type, self.value, self.directive)
+        return (self.type, self.value, self.directive, self.end_of_context)
 
     def __repr__(self):
-        return '<Token(%r, %r, %r)>' % self.as_tuple()
+        return '<Token(%r, %r, %r)>' % self.as_tuple()[:3]
     __str__ = __repr__
 
     def __unicode__(self):
@@ -49,7 +49,7 @@ class Token(object):
         if not isinstance(other, self.__class__):
             raise TypeError('Can\'t compare %s with %s'
                 % (repr(other), repr(self.__class__)))
-        return other.as_tuple() == self.as_tuple()
+        return cmp(other.as_tuple(), self.as_tuple())
 
 
 class TokenStreamIterator(object):

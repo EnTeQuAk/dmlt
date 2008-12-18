@@ -46,15 +46,15 @@
 <Token(2, None, None)>
 """
 from nose.tools import *
-from dmlt.datastructure import Token, TokenStream, _undefined
+from dmlt.datastructure import Token, TokenStream, _undefined, TokenStreamIterator
 
 
 TEST_STREAM = [
-    Token('bold'), Token('italic'), Token('uff'),
-    Token('papapapa'), Token('foo'), Token('python'),
-    Token('spaghetti'), Token('car'), Token('mom')
+    Token('bold', 'boldv'), Token('italic', 'italicv'), Token('uff', 'uffv'),
+    Token('papapapa', 'papapapav'), Token('foo', 'foov'), Token('python', 'pythonv'),
+    Token('spaghetti', 'spaghettiv'), Token('car', 'carv'), Token('mom', 'mom')
 ]
-l = list
+TEST_STREAM_TUPLE = list(t.as_tuple() for t in TEST_STREAM)
 
 
 def test_feed():
@@ -65,6 +65,10 @@ def test_feed():
     for idx, received in enumerate(stream):
         exp = TEST_STREAM[idx]
         assert_equal(exp.type, received.type)
+    stream.push(Token('fam', 'foo'), True)
+    assert_equal(stream.current.type, 'fam')
+    assert_true(stream.test('fam', 'foo'))
+    assert_equal(Token('fam', 'foo'), stream.expect('fam', 'foo'))
 
 
 def test_next():
@@ -73,14 +77,35 @@ def test_next():
         eq_(exp.as_tuple(), stream.current.as_tuple())
         stream.next()
     assert_equal(stream.current.type, 'eof')
+    # test `TokenStream.eof` as well
+    assert_true(stream.eof)
 
 
 def test_look():
-    stream = TokenStream(iter(TEST_STREAM))
+    stream = TokenStream.from_tuple_iter(TEST_STREAM)
     for iexp, exp in enumerate(TEST_STREAM):
         new = stream.look()
         if new.type != 'eof':
             assert_equal(TEST_STREAM[iexp+1].as_tuple(),
                          new.as_tuple())
         stream.next()
-    assert_true(stream.look().type == 'eof')
+    # this is a bit fancy, but imho the right behaviour
+    # XXX: does this belong here and not to `test_feed`?
+    stream.push(Token('fooobaaaar'))
+    assert_equal(stream.current.type, 'eof')
+    assert_equal(stream.look().type, 'fooobaaaar')
+    # skip the current 'eof' token and the 'fooobaaaar' token
+    stream.skip(2)
+    assert_equal(stream.current.type, 'eof')
+
+
+def test_token_stream_iterator():
+    #Low level tests, for more coverage
+    stream = TokenStream.from_tuple_iter(TEST_STREAM_TUPLE)
+    assert_true(isinstance(iter(stream), TokenStreamIterator))
+    # check that TokenStreamIterator.__iter__ works as expected (required for coverage)
+    assert_true(isinstance(iter(iter(stream)), TokenStreamIterator))
+    iter_ = iter(stream)
+    assert_equal(iter_._stream.current.type, 'bold')
+    iter_.next()
+    assert_equal(iter_._stream.current.type, 'italic')
