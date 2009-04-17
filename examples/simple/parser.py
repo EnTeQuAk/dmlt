@@ -42,7 +42,7 @@ class StrongDirective(Directive):
 
 
 class UnderlineDirective(Directive):
-    rule = rule(r'__', enter='underline', leave='strong')
+    rule = rule(r'__', enter='underline', leave='underline')
 
     def parse(self, stream):
         stream.expect('underline_begin')
@@ -52,7 +52,7 @@ class UnderlineDirective(Directive):
 
 
 class EmphasizedDirective(Directive):
-    rule = rule(r"''", enter='emphasized', leave='strong')
+    rule = rule(r"''", enter='emphasized', leave='emphasized')
 
     def parse(self, stream):
         stream.expect('emphasized_begin')
@@ -62,7 +62,7 @@ class EmphasizedDirective(Directive):
 
 
 class EscapedCodeDirective(Directive):
-    rule = rule(r'\`\`', enter='escaped_code', leave='strong')
+    rule = rule(r'\`\`', enter='escaped_code', leave='escaped_code')
 
     def parse(self, stream):
         stream.expect('escaped_code_begin')
@@ -75,7 +75,7 @@ class EscapedCodeDirective(Directive):
 
 
 class SubscriptDirective(Directive):
-    rule = rule(r',,', enter='sub', leave='strong')
+    rule = rule(r',,', enter='sub', leave='sub')
 
     def parse(self, stream):
         stream.expect('sub_begin')
@@ -219,6 +219,7 @@ ftps://someinlinelink.xy
 }}}
 
 -------------
+
 '''
     try:
         from pretty import pprint
