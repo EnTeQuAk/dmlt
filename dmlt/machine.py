@@ -286,6 +286,7 @@ class MarkupMachine(object):
         document = events.emit_ovr('define-document-node')()
 
         while not stream.eof:
+            print "xx", stream.eof, stream.current
             node = self.dispatch_node(stream)
             if node is not None:
                 document.children.append(node)

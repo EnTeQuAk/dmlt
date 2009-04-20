@@ -175,7 +175,7 @@ def parse_child_nodes(stream, node, until):
     `until`-type one so that you can `stream.expect` this token type.
     """
     children = []
-    while 1:
+    while not stream._pushed and not stream.current.type == 'eof':
         if isinstance(until, (list, tuple)):
             if stream.current.type in until: break
         else:

@@ -207,7 +207,9 @@ class TokenStream(object):
 
     def expect(self, type, value=None):
         """expect a given token."""
-        assert self.current.type == type
+        assert self.current.type == type, (
+            "token is from type %s not %s" % (self.current.type, type)
+        )
         if value is not None:
             assert self.current.value == value or \
                    (value.__class__ is tuple and
